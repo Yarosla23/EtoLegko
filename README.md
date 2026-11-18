@@ -4,8 +4,8 @@
 полностью читает каждый ответ и выводит среднее время запроса, общий объём
 и скорость скачивания.
 
-Нужен **Python 3.12+**, рекомендуемая версия — **3.15** с актуальными исправлениями.
-Для запуска и тестов сторонние библиотеки не нужны.
+Основной способ запуска на **Linux — Docker**. Python на хосте устанавливать
+не требуется. Контейнер использует Python 3.15.2; сторонние библиотеки не нужны.
 
 ## Запуск
 
@@ -16,32 +16,41 @@ git clone https://github.com/Yarosla23/EtoLegko.git
 cd EtoLegko
 ```
 
-Проверьте, что выбранный интерпретатор имеет версию 3.12 или новее.
+### Через Docker на Linux
 
-Linux/macOS:
+Нужен установленный и запущенный Docker Engine. Команды выполняются из папки
+проекта пользователем с доступом к Docker daemon.
+
+```bash
+docker build --pull -t etolegko .
+docker run --rm etolegko "https://www.python.org/static/img/python-logo.png"
+```
+
+Справка и проверка аргументов:
+
+```bash
+docker run --rm etolegko --help
+```
+
+Контейнер запускает скрипт от непривилегированного пользователя и удаляется
+после завершения благодаря `--rm`. Для замера не нужны тома и публикация портов.
+После изменения `speedtest.py` пересоберите образ. В образ копируется только
+скрипт; `.dockerignore` исключает окружения, Git, документацию и секреты из контекста.
+
+### Напрямую через Python
+
+Для запуска без Docker нужен Python 3.12+, рекомендуемая версия — 3.15
+с актуальными исправлениями:
 
 ```bash
 python3 --version
 python3 speedtest.py "https://www.python.org/static/img/python-logo.png"
 ```
 
-Windows:
-
-```powershell
-py -3 --version
-py -3 speedtest.py "https://www.python.org/static/img/python-logo.png"
-```
-
 Передавайте абсолютный HTTP/HTTPS-адрес конечного ресурса. URL с параметрами
 заключайте в кавычки; пробелы и не-ASCII символы должны быть URL-кодированы,
 международные домены — представлены в ASCII/Punycode.
 Для содержательного замера выберите доступный большой файл.
-
-Справка:
-
-```bash
-python3 speedtest.py --help
-```
 
 Пример вывода с синтетическими значениями:
 
@@ -97,22 +106,30 @@ speed_mib_s = total_bytes / total_seconds / 1_048_576
 
 ## Проверка без внешнего интернета
 
-В одном терминале из папки проекта запустите локальный сервер:
+В одном терминале из папки проекта запустите локальный сервер в контейнере:
 
 ```bash
-python3 -m http.server 8000 --bind 127.0.0.1
+docker run --rm --network host -v "$PWD/README.md:/srv/README.md:ro" \
+  --entrypoint python etolegko -B -m http.server 8000 --bind 127.0.0.1 --directory /srv
 ```
 
 В другом терминале из той же папки:
 
 ```bash
-python3 speedtest.py "http://127.0.0.1:8000/README.md"
+docker run --rm --network host etolegko "http://127.0.0.1:8000/README.md"
 ```
 
-После проверки остановите сервер через Ctrl+C. На Windows используйте `py -3`
-вместо `python3`.
+На Linux `--network host` даёт контейнеру доступ к серверу на `127.0.0.1` хоста.
+После проверки остановите сервер через Ctrl+C.
 
-Автотесты:
+Автотесты в контейнере (используется скрипт из собранного образа,
+тесты подключаются из текущей папки только для чтения):
+
+```bash
+docker run --rm -v "$PWD/tests:/app/tests:ro" --entrypoint python etolegko -B -m unittest discover -s tests -v
+```
+
+Или без Docker:
 
 ```bash
 python3 -m unittest discover -s tests -v
@@ -121,29 +138,17 @@ python3 -m unittest discover -s tests -v
 Тесты не используют внешний интернет. Они проверяют расчёты, CLI, порядок чтения,
 ошибки и полный запуск через локальный HTTP-сервер на свободном порту.
 Для них среда должна разрешать локальные сокеты и дочерние процессы.
-Проверено на Linux с CPython 3.12.16 и 3.15.2; Windows-команды приведены,
-но в этой среде не запускались.
+Прямой запуск проверен на Linux с CPython 3.12.16 и 3.15.2.
 
 ## Проверка стиля
 
 Ruff — только инструмент разработки, его версия закреплена в `requirements-dev.txt`.
-
-Linux/macOS:
 
 ```bash
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-dev.txt
 .venv/bin/python -m ruff check .
 .venv/bin/python -m ruff format --check .
-```
-
-Windows:
-
-```powershell
-py -3 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
-.\.venv\Scripts\python.exe -m ruff check .
-.\.venv\Scripts\python.exe -m ruff format --check .
 ```
 
 ## Структура
