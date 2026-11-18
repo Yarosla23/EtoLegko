@@ -1,3 +1,6 @@
 *
 !Dockerfile
 !speedtest.py
+!etolegko/
+etolegko/*
+!etolegko/*.py
