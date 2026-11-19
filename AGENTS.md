@@ -23,7 +23,8 @@
   `urllib.request`, `time.perf_counter`, `unittest` и `unittest.mock`.
 - Единственный сторонний инструмент — Ruff для разработки. Его точную проверенную
   версию зафиксируй в `requirements-dev.txt`; устанавливай инструменты в `.venv`.
-- Основной пользовательский запуск — Docker на Linux. При изменении состава
+- Основной пользовательский запуск — Docker на Linux, macOS и Windows
+  в режиме Linux-контейнеров. При изменении состава
   исполняемых файлов обновляй `COPY` в Dockerfile и список допуска `.dockerignore`.
   Проверяй сборку, CLI и тесты в контейнере по командам README.
 - `pyproject.toml` хранит настройки Ruff: `target-version = "py312"`,

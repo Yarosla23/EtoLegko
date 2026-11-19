@@ -4,8 +4,9 @@
 полностью читает каждый ответ и выводит среднее время запроса, общий объём
 и скорость скачивания.
 
-Основной способ запуска на **Linux — Docker**. Python на хосте устанавливать
-не требуется. Контейнер использует Python 3.15.2; сторонние библиотеки не нужны.
+Основной способ запуска — **Docker**. Команды сборки и запуска одинаковы
+для Linux, macOS и Windows. Python на устройстве устанавливать не требуется:
+контейнер использует Python 3.15.2; сторонние библиотеки не нужны.
 
 ## Запуск
 
@@ -16,10 +17,15 @@ git clone https://github.com/Yarosla23/EtoLegko.git
 cd EtoLegko
 ```
 
-### Через Docker на Linux
+### Через Docker
 
-Нужен установленный и запущенный Docker Engine. Команды выполняются из папки
-проекта пользователем с доступом к Docker daemon.
+Установите и запустите [Docker Desktop](https://docs.docker.com/desktop/)
+для вашей ОС или [Docker Engine](https://docs.docker.com/engine/install/)
+на Linux. Проект использует Linux-контейнеры; на Windows выберите этот режим
+в Docker Desktop.
+
+Выполняйте команды из папки проекта в терминале Linux/macOS или PowerShell
+на Windows. Пользователю нужен доступ к запущенному Docker.
 
 ```bash
 docker build --pull -t etolegko .
@@ -41,12 +47,22 @@ docker run --rm etolegko --help
 ### Напрямую через Python
 
 Для запуска без Docker нужен Python 3.12+, рекомендуемая версия — 3.15
-с актуальными исправлениями:
+с актуальными исправлениями. В Linux и macOS:
 
 ```bash
 python3 --version
 python3 speedtest.py "https://www.python.org/static/img/python-logo.png"
 ```
+
+В Windows с установленным Python Launcher:
+
+```powershell
+py -3 --version
+py -3 speedtest.py "https://www.python.org/static/img/python-logo.png"
+```
+
+Если Python доступен под командой `python`, используйте её вместо `python3`
+или `py -3`. Это относится и к командам проверки ниже.
 
 Передавайте абсолютный HTTP/HTTPS-адрес конечного ресурса. URL с параметрами
 заключайте в кавычки; пробелы и не-ASCII символы должны быть URL-кодированы,
@@ -107,21 +123,27 @@ speed_mib_s = total_bytes / total_seconds / 1_048_576
 
 ## Проверка без внешнего интернета
 
-В одном терминале из папки проекта запустите локальный сервер в контейнере:
+После сборки образа в одном терминале создайте общую сеть и запустите
+тестовый HTTP-сервер. Команды одинаковы для Linux, macOS и Windows:
 
 ```bash
-docker run --rm --network host -v "$PWD/README.md:/srv/README.md:ro" \
-  --entrypoint python etolegko -B -m http.server 8000 --bind 127.0.0.1 --directory /srv
+docker network create etolegko-test
+docker run --rm --name etolegko-source --network etolegko-test --entrypoint python etolegko -B -u -m http.server 8000 --directory /app
 ```
 
-В другом терминале из той же папки:
+Дождитесь сообщения `Serving HTTP`, затем в другом терминале выполните замер:
 
 ```bash
-docker run --rm --network host etolegko "http://127.0.0.1:8000/README.md"
+docker run --rm --network etolegko-test etolegko "http://etolegko-source:8000/speedtest.py"
 ```
 
-На Linux `--network host` даёт контейнеру доступ к серверу на `127.0.0.1` хоста.
-После проверки остановите сервер через Ctrl+C.
+Сервер отдаёт файл из образа через внутреннюю сеть Docker; публикация портов
+и подключение файлов с устройства не нужны. После проверки остановите сервер
+через Ctrl+C в первом терминале и удалите тестовую сеть:
+
+```bash
+docker network rm etolegko-test
+```
 
 Автотесты в контейнере (используется скрипт из собранного образа,
 тесты подключаются из текущей папки только для чтения):
@@ -144,12 +166,22 @@ python3 -m unittest discover -s tests -v
 ## Проверка стиля
 
 Ruff — только инструмент разработки, его версия закреплена в `requirements-dev.txt`.
+В Linux и macOS:
 
 ```bash
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-dev.txt
 .venv/bin/python -m ruff check .
 .venv/bin/python -m ruff format --check .
+```
+
+В Windows (PowerShell):
+
+```powershell
+py -3 -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+.venv\Scripts\python.exe -m ruff check .
+.venv\Scripts\python.exe -m ruff format --check .
 ```
 
 ## Структура
